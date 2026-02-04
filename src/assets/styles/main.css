@@ -1,0 +1,36 @@
+/* 基础重置 */
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family:
+    'Microsoft YaHei',
+    -apple-system,
+    sans-serif;
+}
+
+/* 覆盖 ArcGIS 默认样式 */
+.esri-view {
+  background-color: transparent !important;
+}
+
+/* 隐藏 ArcGIS 的自带 Logo (可选) */
+.esri-ui-manual-container > .esri-component {
+  display: none !important;
+}
+
+/* 滚动条通用美化 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
