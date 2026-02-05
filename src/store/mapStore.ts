@@ -7,6 +7,9 @@ export const useMapStore = defineStore('mapStore', () => {
   const map = ref<any>(null)
   const adminLayer = ref<any>(null)
   const pointLayers = ref<Record<string, any>>({})
+  const registerLayers = (id: string, layer: any) => {
+    pointLayers.value[id] = markRaw(layer)
+  }
 
   // 业务状态
   const filterResults = ref<Record<string, number>>({})
@@ -14,11 +17,11 @@ export const useMapStore = defineStore('mapStore', () => {
   const isNationalStats = ref(false)
   const provinceStats = ref<any[]>([])
   const isPolygonAnalysis = ref(false)
-
+  const layerProvinceMap = ref<Record<string, Record<string, number>>>({})
   // --- [新增] 修复 CitySelector 报错的缺失状态 ---
   const currentCityName = ref('全国')
   const showCityPanel = ref(false)
-
+  const analysisMode = ref<'none' | 'spatial' | 'province'>('none')
   // 设置方法
   const setView = (v: any) => {
     view.value = markRaw(v)
@@ -35,6 +38,8 @@ export const useMapStore = defineStore('mapStore', () => {
     isNationalStats.value = false
     isPolygonAnalysis.value = false
     filterResults.value = {}
+    layerProvinceMap.value = {}
+    analysisMode.value = 'none'
     provinceStats.value = [] // 重置统计数据
     currentCityName.value = '全国'
     if (adminLayer.value) adminLayer.value.removeAll()
@@ -45,6 +50,7 @@ export const useMapStore = defineStore('mapStore', () => {
     map,
     adminLayer,
     pointLayers,
+    registerLayers,
     filterResults,
     selectedFeature,
     isNationalStats,

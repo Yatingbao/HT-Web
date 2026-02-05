@@ -15,7 +15,6 @@ export function useLayers() {
     if (!view || !view.map) return
 
     for (const cfg of configs) {
-      // 1. 创建图层实例
       const layer = new GraphicsLayer({
         id: cfg.id,
         title: cfg.title,
@@ -23,28 +22,24 @@ export function useLayers() {
       })
 
       try {
-        // 2. 获取数据
         const response = await fetch(cfg.geojsonUrl)
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const geojson = await response.json()
 
-        // 3. 转换 Graphics
         const graphics = geojson.features
           .map((f: any) => {
-            // 确保坐标存在
             if (!f.geometry || !f.geometry.coordinates) return null
             const [lon, lat] = f.geometry.coordinates
 
-            // 重要：在这里创建 Point 实例
-            const pt = new Point({
-              longitude: Number(lon),
-              latitude: Number(lat),
-              spatialReference: { wkid: 4326 },
-            })
-
             return new Graphic({
-              geometry: pt,
-              attributes: { ...f.properties }, // 浅拷贝一份属性
+              geometry: new Point({
+                longitude: Number(lon),
+                latitude: Number(lat),
+                spatialReference: { wkid: 4326 },
+              }),
+              attributes: {
+                ...f.properties,
+                layerId: cfg.id, // 注入 layerId 方便后续查找配置
+              },
               symbol: {
                 type: 'simple-marker',
                 color: cfg.color || [64, 158, 255],
@@ -55,48 +50,69 @@ export function useLayers() {
           })
           .filter(Boolean)
 
-        // 4. 批量添加并注册
         layer.addMany(graphics)
         view.map.add(layer)
 
-        // 必须确保 mapStore 有 registerLayer 方法
-        mapStore.registerLayer(cfg.id, layer)
+        if (mapStore.registerLayers) {
+          mapStore.registerLayers(cfg.id, layer)
+        }
 
-        console.log(`图层 ${cfg.title} 加载成功，点位数: ${graphics.length}`)
+        // 初次加载完成后，触发一次统计更新
+        updateGlobalStats('')
       } catch (err) {
-        console.error(`图层 ${cfg.title} 加载失败:`, err)
+        console.error(`❌ 图层 [${cfg.title}] 加载失败:`, err)
       }
     }
   }
 
   /**
-   * 搜索过滤逻辑
+   * 核心修改：统一的搜索与分省统计更新逻辑
    */
   const applySearch = (query: string) => {
-    const q = query.toLowerCase().trim()
-    const stats: Record<string, number> = {}
+    updateGlobalStats(query)
+  }
 
-    // 遍历 Store 中注册的所有图层
+  const updateGlobalStats = (query: string) => {
+    const q = query.toLowerCase().trim()
+    const filterStats: Record<string, number> = {} // 存每个图层的点数
+    const provinceMap: Record<string, number> = {} // 存分省聚合结果
+
+    // 1. 遍历所有注册的点图层
     _.forEach(mapStore.pointLayers, (layer, id) => {
-      let count = 0
+      let layerMatchCount = 0
+
+      // 获取该图层在配置中的可见性 (来自 LayerPanel 的勾选状态)
+      const layerConfig = mapStore.layerConfigs.find((c) => c.id === id)
+      const isLayerVisible = layerConfig ? layerConfig.visible : true
+
       layer.graphics.forEach((g: __esri.Graphic) => {
-        if (!q) {
-          g.visible = true
-          count++
-        } else {
-          // 全文检索属性值
-          const text = Object.values(g.attributes || {})
-            .join(' ')
-            .toLowerCase()
-          const isMatch = text.includes(q)
-          g.visible = isMatch
-          if (isMatch) count++
+        // 判断搜索匹配
+        const text = Object.values(g.attributes || {})
+          .join(' ')
+          .toLowerCase()
+        const isMatch = !q || text.includes(q)
+
+        // 图形是否在地图上显示：搜索匹配 且 图层被勾选
+        g.visible = isMatch && isLayerVisible
+
+        if (isMatch && isLayerVisible) {
+          layerMatchCount++
+          // 2. 统计省份数据 (只统计当前可见且匹配的点)
+          const prov = g.attributes.province || g.attributes.省份 || '未知'
+          provinceMap[prov] = (provinceMap[prov] || 0) + 1
         }
       })
-      stats[id] = count
+
+      filterStats[id] = layerMatchCount
     })
 
-    mapStore.filterResults = stats
+    // 3. 更新 Store
+    mapStore.filterResults = filterStats
+
+    // 将 provinceMap 转为数组并排序存入 provinceStats
+    mapStore.provinceStats = Object.entries(provinceMap)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
   }
 
   return { loadBusinessLayers, applySearch }

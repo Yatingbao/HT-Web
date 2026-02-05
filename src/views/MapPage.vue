@@ -47,17 +47,15 @@ const initThemeMap = async () => {
   const config = mapRegistry[mapId]
 
   if (config) {
-    isInitialized.value = false // 切换专题时重置状态
+    isInitialized.value = false
     currentConfig.value = config
 
-    // 清除上一个专题留下的图形（可选）
-    mapStore.clearScreen()
+    // 【关键一步】同步到 Store，这样 LayerPanel 里的 computed 才能拿到数据
+    mapStore.layerConfigs = config.layers
 
-    // 1. 加载 GeoJSON 业务图层
+    mapStore.clearScreen()
     await loadBusinessLayers(config.layers)
-    // 2. 初始显示所有点
     applySearch('')
-    // 3. 标记完成
     isInitialized.value = true
   }
 }

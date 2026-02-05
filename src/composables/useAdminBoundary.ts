@@ -10,6 +10,8 @@ export function useAdminBoundary() {
 
   /**
    * 1. 绘制行政区划边界
+   * @param cityName 城市名称
+   * @param isProvince 是否为省级（决定渲染颜色）
    */
   const drawBoundary = async (cityName: string, isProvince: boolean) => {
     const { view, adminLayer } = mapStore
@@ -18,28 +20,42 @@ export function useAdminBoundary() {
     try {
       const res = await getDistrictData(cityName)
       const d = res.data.districts?.[0]
-      if (!d?.polyline) return
 
+      if (!d?.polyline) {
+        console.warn('未获取到行政边界数据')
+        return
+      }
+
+      // 解析高德 polyline 数据格式
       const rings = d.polyline
         .split('|')
         .map((part: string) => part.split(';').map((p: string) => p.split(',').map(Number)))
 
-      const poly = new Polygon({ rings, spatialReference: { wkid: 4326 } })
+      // 创建多边形并指定 WGS84 坐标系
+      const poly = new Polygon({
+        rings,
+        spatialReference: { wkid: 4326 },
+      })
 
+      // 清理旧边界
       adminLayer.removeAll()
+
       const graphic = new Graphic({
         geometry: poly,
         symbol: {
           type: 'simple-fill',
           color: isProvince ? [255, 223, 0, 0.05] : [64, 158, 255, 0.05],
-          outline: { color: isProvince ? [255, 223, 0] : [64, 158, 255], width: 1.5 },
+          outline: {
+            color: isProvince ? [255, 223, 0] : [64, 158, 255],
+            width: 1.5,
+          },
         } as any,
         attributes: { name: d.name },
       })
 
       adminLayer.add(graphic)
 
-      // 视角跳转（2D 模式下 expand 决定留白区域）
+      // 视角跳转
       view.goTo(poly.extent.expand(1.5))
 
       return graphic
@@ -49,54 +65,69 @@ export function useAdminBoundary() {
   }
 
   /**
-   * 2. 空间分析：计算当前边界内的点位
-   * @param targetGeometry 可选参数，直接传入刚生成的几何体，避免从图层中提取失败
+   * 2. 空间分析：计算选定区域内的点位分布
+   * @param targetGeometry 可选：直接传入几何体以避免异步读取延迟
    */
-
-  const runSpatialQuery = (targetGeometry?: __esri.Geometry) => {
+  const runSpatialQuery = (targetGeometry?: any) => {
     const { adminLayer, pointLayers } = mapStore
-    const boundary = targetGeometry || adminLayer?.graphics.getItemAt(0)?.geometry
 
-    if (!boundary) return
+    // 获取边界对象
+    const rawBoundary = targetGeometry || adminLayer?.graphics.getItemAt(0)?.geometry
+    if (!rawBoundary) {
+      console.warn('空间分析失败：未找到有效边界')
+      return
+    }
+
+    // 关键修正：修复多边形拓扑（修复环方向、自相交等问题，确保 contains 计算准确）
+    const boundary = geometryEngine.simplify(rawBoundary)
 
     const stats: Record<string, number> = {}
     const provMap: Record<string, number> = {}
 
-    // 打印调试信息：检查边界范围和坐标系
-    console.log('开始空间分析，边界坐标系:', boundary.spatialReference.wkid)
-
-    _.forEach(pointLayers, (layer, id) => {
-      if (!layer.visible) return
+    // 遍历所有已注册的业务图层
+    Object.entries(pointLayers).forEach(([id, layer]: [string, any]) => {
+      console.log(`正在分析图层: ${id}, 总点数: ${layer.graphics.length}`)
 
       let layerCount = 0
-      layer.graphics.forEach((g) => {
-        // 核心检查：如果 g.geometry 是 null 或者坐标系不匹配，会导致 contains 永远为 false
-        if (g.visible && g.geometry) {
-          // 强制确保点和面在同一个坐标系计算 (WGS84)
-          const isInside = geometryEngine.contains(boundary as any, g.geometry as any)
 
-          if (isInside) {
-            layerCount++
-            const pName = g.attributes.province || g.attributes.省份 || '其他'
-            provMap[pName] = (provMap[pName] || 0) + 1
+      layer.graphics.forEach((g: any) => {
+        // 只统计可见的点，且必须具有几何信息
+        if (g.geometry && g.visible) {
+          try {
+            // 执行包含判断
+            const isInside = geometryEngine.contains(boundary, g.geometry)
+
+            if (isInside) {
+              layerCount++
+
+              // 分省统计逻辑
+              const attr = g.attributes || {}
+              const pName = attr.province || attr.PROVINCE || attr.省份 || '其他'
+              provMap[pName] = (provMap[pName] || 0) + 1
+            }
+          } catch (e) {
+            console.error('空间判断执行异常:', e)
           }
         }
       })
 
-      if (layerCount > 0) stats[id] = layerCount
+      if (layerCount > 0) {
+        stats[id] = layerCount
+      }
     })
 
-    console.log('分析完成，结果:', stats)
-
+    // 更新 Store 状态，驱动 UI (SpatialPopup) 更新
     mapStore.isPolygonAnalysis = true
     mapStore.filterResults = stats
     mapStore.provinceStats = Object.entries(provMap)
       .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
+      .sort((a: any, b: any) => b.count - a.count)
+
+    console.log('分析存入 Store 的结果:', stats)
   }
 
   /**
-   * 3. 全局统计：不基于空间位置，基于当前图层开启状态进行全表汇总
+   * 3. 全局/属性统计：基于属性字段汇总全国分布
    */
   const runAttributeStats = () => {
     const { pointLayers } = mapStore
@@ -104,8 +135,10 @@ export function useAdminBoundary() {
 
     _.forEach(pointLayers, (layer) => {
       if (!layer.visible) return
+
       layer.graphics.forEach((g) => {
         if (!g.visible) return
+
         const attr = g.attributes || {}
         const pName = attr.province || attr.PROVINCE || attr.省份 || '其他'
         statsMap[pName] = (statsMap[pName] || 0) + 1
@@ -115,7 +148,7 @@ export function useAdminBoundary() {
     mapStore.isNationalStats = true
     mapStore.provinceStats = Object.entries(statsMap)
       .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
+      .sort((a: any, b: any) => b.count - a.count)
   }
 
   return { drawBoundary, runSpatialQuery, runAttributeStats }
