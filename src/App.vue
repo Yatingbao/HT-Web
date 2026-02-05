@@ -51,14 +51,17 @@ body {
 
 /* 2. 顶栏样式 */
 .app-header {
-  background: #1a1a1a; /* 深色背景更有专业 GIS 感 */
+  background: rgba(26, 26, 26); /* 稍微降低透明度 */
+
+  /* 建议：透明后可以把阴影调淡一点，更显轻盈 */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+
   color: white;
   padding: 0 25px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   height: 70px; /* 稍微收窄一点，给地图留出更多空间 */
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   z-index: 1000; /* 确保在地图图层之上 */
 }
 

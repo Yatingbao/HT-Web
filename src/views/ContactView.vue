@@ -20,7 +20,16 @@
           <div class="icon">📧</div>
           <div class="text">
             <h4>电子邮箱</h4>
+            <p><a href="mailto:luhuang@zju.edu.com">luhuang@zju.edu.com</a></p>
             <p><a href="mailto:yatingbao@zju.edu.com">yatingbao@zju.edu.com</a></p>
+          </div>
+        </div>
+
+        <div class="info-item">
+          <div class="icon">📞</div>
+          <div class="text">
+            <h4>联系电话</h4>
+            <p><a href="mailto:luhuang@zju.edu.com">0571-88981121</a></p>
           </div>
         </div>
 
