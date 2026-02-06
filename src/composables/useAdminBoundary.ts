@@ -47,9 +47,9 @@ export function useAdminBoundary() {
       })
       adminLayer.add(graphic)
 
-      // 1. 视角跳转
-      await view.goTo(poly.extent.expand(1.5))
-
+      if (poly.extent) {
+        await view.goTo(poly.extent.expand(1.5))
+      }
       // 2. 核心：跳转后立即执行空间分析并打开 Popup
       // 我们传入刚刚生成的 poly，避免从图层中读取的延迟
       runSpatialQuery(poly)

@@ -42,7 +42,7 @@ export function useMapInit() {
       ui: { components: [] }, // 隐藏 ArcGIS 默认 UI
       // 关键防御：禁用原生弹出窗口，交由自定义 SpatialPopup 处理
       popup: {
-        autoOpenEnabled: false,
+        //autoOpenEnabled: false,
         dockEnabled: false,
       },
       // 核心布局：给左侧和底部留出安全内边距，避开左下角弹窗
