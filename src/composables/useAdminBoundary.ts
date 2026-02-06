@@ -13,6 +13,8 @@ export function useAdminBoundary() {
    * @param cityName 城市名称
    * @param isProvince 是否为省级（决定渲染颜色）
    */
+  // useAdminBoundary.ts
+
   const drawBoundary = async (cityName: string, isProvince: boolean) => {
     const { view, adminLayer } = mapStore
     if (!view || !adminLayer) return
@@ -20,26 +22,18 @@ export function useAdminBoundary() {
     try {
       const res = await getDistrictData(cityName)
       const d = res.data.districts?.[0]
+      if (!d?.polyline) return
 
-      if (!d?.polyline) {
-        console.warn('未获取到行政边界数据')
-        return
-      }
-
-      // 解析高德 polyline 数据格式
       const rings = d.polyline
         .split('|')
         .map((part: string) => part.split(';').map((p: string) => p.split(',').map(Number)))
 
-      // 创建多边形并指定 WGS84 坐标系
       const poly = new Polygon({
         rings,
         spatialReference: { wkid: 4326 },
       })
 
-      // 清理旧边界
       adminLayer.removeAll()
-
       const graphic = new Graphic({
         geometry: poly,
         symbol: {
@@ -50,17 +44,19 @@ export function useAdminBoundary() {
             width: 1.5,
           },
         } as any,
-        attributes: { name: d.name },
       })
-
       adminLayer.add(graphic)
 
-      // 视角跳转
-      view.goTo(poly.extent.expand(1.5))
+      // 1. 视角跳转
+      await view.goTo(poly.extent.expand(1.5))
+
+      // 2. 核心：跳转后立即执行空间分析并打开 Popup
+      // 我们传入刚刚生成的 poly，避免从图层中读取的延迟
+      runSpatialQuery(poly)
 
       return graphic
     } catch (err) {
-      console.error('获取边界失败:', err)
+      console.error('跳转失败:', err)
     }
   }
 
@@ -69,6 +65,9 @@ export function useAdminBoundary() {
    * @param targetGeometry 可选：直接传入几何体以避免异步读取延迟
    */
   const runSpatialQuery = (targetGeometry?: any) => {
+    mapStore.isAnalysisActive = true
+    mapStore.isPolygonAnalysis = true
+    mapStore.selectedFeature = null
     const { adminLayer, pointLayers } = mapStore
 
     // 获取边界对象
@@ -127,29 +126,45 @@ export function useAdminBoundary() {
   }
 
   /**
-   * 3. 全局/属性统计：基于属性字段汇总全国分布
+   * 3. 统计
+   * @param targetGeometry 可选：直接传入几何体以避免异步读取延迟
    */
   const runAttributeStats = () => {
+    mapStore.currentCityName = '全国'
+    mapStore.isAnalysisActive = true
+    mapStore.isPolygonAnalysis = false
+    mapStore.selectedFeature = null
+
+    // 3. 清理之前的局部状态
+    mapStore.filterResults = {}
+    if (mapStore.adminLayer) {
+      mapStore.adminLayer.removeAll() // 建议在看全国统计时，清除地图上的黄色边界线
+    }
+
+    mapStore.isAnalysisActive = true
+    mapStore.isPolygonAnalysis = false // 关闭局部空间分析标记
+    mapStore.selectedFeature = null
+
+    // 清空之前的局部统计结果，确保显示的是全局数据
+    mapStore.filterResults = {}
+
     const { pointLayers } = mapStore
     const statsMap: Record<string, number> = {}
+    const layersArray = Object.values(pointLayers)
 
-    _.forEach(pointLayers, (layer) => {
+    layersArray.forEach((layer: any) => {
       if (!layer.visible) return
-
-      layer.graphics.forEach((g) => {
+      layer.graphics.forEach((g: any) => {
         if (!g.visible) return
-
         const attr = g.attributes || {}
         const pName = attr.province || attr.PROVINCE || attr.省份 || '其他'
         statsMap[pName] = (statsMap[pName] || 0) + 1
       })
     })
 
-    mapStore.isNationalStats = true
     mapStore.provinceStats = Object.entries(statsMap)
       .map(([name, count]) => ({ name, count }))
-      .sort((a: any, b: any) => b.count - a.count)
+      .sort((a, b) => b.count - a.count)
   }
-
   return { drawBoundary, runSpatialQuery, runAttributeStats }
 }

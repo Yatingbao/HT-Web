@@ -17,6 +17,7 @@ export const useMapStore = defineStore('mapStore', () => {
   const isNationalStats = ref(false)
   const provinceStats = ref<any[]>([])
   const isPolygonAnalysis = ref(false)
+  const isAnalysisActive = ref(false)
   const layerProvinceMap = ref<Record<string, Record<string, number>>>({})
   // --- [新增] 修复 CitySelector 报错的缺失状态 ---
   const currentCityName = ref('全国')
@@ -37,6 +38,7 @@ export const useMapStore = defineStore('mapStore', () => {
     selectedFeature.value = null
     isNationalStats.value = false
     isPolygonAnalysis.value = false
+    isAnalysisActive.value = false
     filterResults.value = {}
     layerProvinceMap.value = {}
     analysisMode.value = 'none'
@@ -52,6 +54,7 @@ export const useMapStore = defineStore('mapStore', () => {
     pointLayers,
     registerLayers,
     filterResults,
+    isAnalysisActive,
     selectedFeature,
     isNationalStats,
     provinceStats,
