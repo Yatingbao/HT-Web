@@ -3,7 +3,7 @@
     <div class="search-box">
       <div class="search-wrapper">
         <input
-          v-model="mapStore.searchQuery"
+          v-model="mapStore.searchKey"
           placeholder="搜索 名称 / 年份 / 备注"
           @input="handleSearch"
         />
@@ -36,7 +36,7 @@ const { runSpatialQuery, runAttributeStats } = useAdminBoundary()
 
 // 输入时实时触发搜索过滤
 const handleSearch = () => {
-  applySearch(mapStore.searchQuery)
+  applySearch(mapStore.searchKey)
 }
 </script>
 

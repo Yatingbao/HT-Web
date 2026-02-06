@@ -69,7 +69,6 @@ export function useAdminBoundary() {
     mapStore.isPolygonAnalysis = true
     mapStore.selectedFeature = null
     const { adminLayer, pointLayers } = mapStore
-
     // 获取边界对象
     const rawBoundary = targetGeometry || adminLayer?.graphics.getItemAt(0)?.geometry
     if (!rawBoundary) {
@@ -92,20 +91,22 @@ export function useAdminBoundary() {
       layer.graphics.forEach((g: any) => {
         // 只统计可见的点，且必须具有几何信息
         if (g.geometry && g.visible) {
-          try {
-            // 执行包含判断
-            const isInside = geometryEngine.contains(boundary, g.geometry)
+          if (geometryEngine.contains(boundary, g.geometry)) {
+            try {
+              // 执行包含判断
+              const isInside = geometryEngine.contains(boundary, g.geometry)
 
-            if (isInside) {
-              layerCount++
+              if (isInside) {
+                layerCount++
 
-              // 分省统计逻辑
-              const attr = g.attributes || {}
-              const pName = attr.province || attr.PROVINCE || attr.省份 || '其他'
-              provMap[pName] = (provMap[pName] || 0) + 1
+                // 分省统计逻辑
+                const attr = g.attributes || {}
+                const pName = attr.province || attr.PROVINCE || attr.省份 || '其他'
+                provMap[pName] = (provMap[pName] || 0) + 1
+              }
+            } catch (e) {
+              console.error('空间判断执行异常:', e)
             }
-          } catch (e) {
-            console.error('空间判断执行异常:', e)
           }
         }
       })

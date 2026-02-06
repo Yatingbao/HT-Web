@@ -10,8 +10,11 @@ export const useMapStore = defineStore('mapStore', () => {
   const registerLayers = (id: string, layer: any) => {
     pointLayers.value[id] = markRaw(layer)
   }
+  // --- [新增] 搜索状态 ---
+  const searchKey = ref('') // 存储当前搜索框的关键词
 
-  // 业务状态
+  // --- [新增] 图层配置（用于获取 fieldLabels 和图层颜色） ---
+  const layerConfigs = ref<any[]>([])
   const filterResults = ref<Record<string, number>>({})
   const selectedFeature = ref<any>(null)
   const isNationalStats = ref(false)
@@ -19,7 +22,6 @@ export const useMapStore = defineStore('mapStore', () => {
   const isPolygonAnalysis = ref(false)
   const isAnalysisActive = ref(false)
   const layerProvinceMap = ref<Record<string, Record<string, number>>>({})
-  // --- [新增] 修复 CitySelector 报错的缺失状态 ---
   const currentCityName = ref('全国')
   const showCityPanel = ref(false)
   const analysisMode = ref<'none' | 'spatial' | 'province'>('none')
@@ -44,6 +46,7 @@ export const useMapStore = defineStore('mapStore', () => {
     analysisMode.value = 'none'
     provinceStats.value = [] // 重置统计数据
     currentCityName.value = '全国'
+    searchKey.value = '' // 清空搜索
     if (adminLayer.value) adminLayer.value.removeAll()
   }
 
@@ -53,6 +56,8 @@ export const useMapStore = defineStore('mapStore', () => {
     adminLayer,
     pointLayers,
     registerLayers,
+    searchKey, // 导出搜索词
+    layerConfigs,
     filterResults,
     isAnalysisActive,
     selectedFeature,
