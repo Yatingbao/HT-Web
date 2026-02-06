@@ -14,7 +14,7 @@
       <div class="popup-content">
         <div v-if="mapStore.selectedFeature && !isAnalysis" class="content-section">
           <div v-for="(val, key) in displayAttributes" :key="key" class="data-row">
-            <span class="data-label">{{ getFieldLabel(key) }}</span>
+            <span class="data-label">{{ getFieldLabel(String(key)) }}</span>
             <span class="data-value">{{ val || '-' }}</span>
           </div>
         </div>
@@ -120,7 +120,7 @@ const activeLayerStats = computed(() => {
   const result: Record<string, number> = {}
   mapStore.layerConfigs.forEach((cfg) => {
     if (cfg.visible && mapStore.filterResults[cfg.id] !== undefined)
-      result[cfg.id] = mapStore.filterResults[cfg.id]
+      result[cfg.id] = mapStore.filterResults[cfg.id]!
   })
   return result
 })

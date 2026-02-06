@@ -17,7 +17,6 @@ export function setupTdtInterceptors() {
           ...params.requestOptions,
           headers: {},
           mode: 'cors', // 尝试从 no-cors 改回 cors，配合 Image 标签使用
-          method: 'GET',
         }
       },
     })
