@@ -23,6 +23,12 @@ const router = createRouter({
       component: () => import('@/views/AboutView.vue'),
     },
     {
+      path: '/case-study',
+      name: 'case-study',
+      // 懒加载新页面
+      component: () => import('@/views/CaseStudyView.vue'),
+    },
+    {
       path: '/contact',
       name: 'contact',
       component: () => import('@/views/ContactView.vue'),

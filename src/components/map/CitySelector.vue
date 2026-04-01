@@ -42,6 +42,12 @@ const { drawBoundary, runSpatialQuery } = useAdminBoundary()
 const AMAP_KEY = 'e1a98bb1a3f621026f5a245c2cee2504'
 const fullAdminData = ref<any[]>([])
 
+/**
+ * Computed Property: Organizes raw API data for the UI.
+ * 1. Sorts provinces by their official 'adcode'.
+ * 2. Sorts cities within each province by their 'adcode'.
+ * Result: A professionally ordered list (e.g., Beijing -> Tianjin -> ...).
+ */
 const sortedAdminData = computed(() =>
   _.sortBy(fullAdminData.value, (p) => parseInt(p.adcode)).map((p) => ({
     ...p,

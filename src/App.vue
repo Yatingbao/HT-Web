@@ -8,6 +8,7 @@
       <nav class="app-nav">
         <ul>
           <li><router-link to="/">首页</router-link></li>
+          <li><router-link to="/case-study">典型案例</router-link></li>
           <li><router-link to="/about">关于项目</router-link></li>
           <li><router-link to="/contact">联系我们</router-link></li>
         </ul>
